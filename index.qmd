@@ -13,9 +13,8 @@ editor:
 
 I am excited to announce the first official release of the `bmm` R package. The `bmm` package is
 designed to make Bayesian measurement modeling in psychology accessible to all. This is work I've
-done in close collaboration with [Gidon
-Frischkorn](https://www.psychologie.uzh.ch/de/bereiche/nec/allgpsy/team/wissenschaftliche/frischkorn.html)
-over the past two years and we are excited to finally share it with the world.
+done in close collaboration with [Gidon Frischkorn](https://www.gfrischkorn.org) over the past two 
+years and we are excited to finally share it with the world.
 
 You can install the package from CRAN using the following command:
 
@@ -28,51 +27,55 @@ website](https://venpopov.github.io/bmm/index.html).
 
 ## What is bmm for?
 
-The package provides a simple and intuitive interface for fitting a wide range of measurement models
+The package provides a simple and intuitive interface for fitting a wide range of measurement models[^1]
 in psychology using Bayesian methods. It is designed to be accessible to researchers with little to
-no experience with Bayesian statistics or cognitive modeling. But first, what is a measurement
-model?
+no experience with Bayesian statistics or cognitive modeling. But first things first, what is a
+measurement model?
 
 Measurement models are used to understand the relationship between latent psychological constructs
-and behavioral data. The data we observe are often
-noisy and imperfect reflections of the underlying psychological processes we are interested in.
-These data also often result from multiple interrelated processes that can be difficult to
-disentangle. Measurement models provide a way to model these processes and estimate the underlying
-psychological constructs that are driving the observed data.
+and behavioral data. The data we observe are often noisy and imperfect reflections of the underlying
+psychological processes we are interested in. These data also often result from multiple interrelated
+processes that can be difficult to disentangle. Measurement models provide a way to model these 
+processes and estimate the underlying psychological constructs that are driving the observed data.
 
-Measurement models are used in a wide range of psychological research areas. Some of the more
-popular models include drift diffusion models in decision making, signal detection theory models in
-perception and memory, and mixture models in visual working memory. The basic idea behind all such
+A wide range of psychological research areas develops and uses such measurement models. Some of the 
+more popular models include drift diffusion models in decision making, signal detection theory models 
+in perception and memory, and mixture models in visual working memory. The basic idea behind all such
 models is that we can decompose one or multiple observed measures (e.g., reaction times, accuracy
 rates, angular deviation) into latent psychological processes (e.g., decision thresholds, memory
 strength) that are not directly observable.
 
-(MAYBE AN IMAGE HERE?)
+[^1]: Ok to be fair, when I say "wide-range", I am refering to the potential of the package. The
+    package currently supports most models in the domain of visual working memory, but we are
+    working on expanding it to other areas as well. Thus, the package is designed to be extensible, so
+    you can easily add your own models.
 
 ## The challenges of measurement modeling
 
-Traditionally, to fit a measurement model in pscyhology, you usually needed to build it yourself.
-The simple reality is that most researchers don't have the time, resources, or expertise to build
-and fit these models from scratch. This is doubly true for Bayesian models, which require a
-different set of tools and skills than traditional maximum likelihood estimation. And even for those
-who do have the skills, the process can be time-consuming and error-prone.
+Traditionally, to fit a measurement model in psychology, you usually needed to build it yourself.
+The simple reality is, however, that most researchers don't have the time, resources, or expertise to 
+build and fit these models from scratch. This is doubly true for Bayesian hierarchical implementations,
+which require a different set of tools and skills than traditional maximum likelihood estimation. 
+And even for those who do have the skills, the process can be time-consuming and error-prone.
 
-This is in fact why we started working on the `bmm` package in the first place - we were tired of
+![](confused.gif){fig-align="center"}
+
+This is why we started working on the `bmm` package in the first place - we were tired of
 doing the same thing over and over again for every new project. What started as a personal project
 to make our own lives easier has now turned into a full-fledged R package. What we have built is a
-package that allows you to fit a wide range of measurement models[^1] with just a few lines of code.
-You no longer need to copy paste custom JAGS or Stan code from one project to the next. You no
-longer need to worry about whether you have correctly specified your priors or likelihoods. You no
-longer need to worry about whether you have correctly implemented your model. You don't have to
-worry about how to adjust the script for your new experimental design and to spend hours debugging
-it. The `bmm` package takes care of all of that for you.
+package that allows you to fit a wide range of measurement models with just a few lines of code.
 
-(MAYBE AN IMAGE HERE? CONFUSED MEME FROM THE POWERPOINT PRESENTATION?)
+You no longer need to...
 
-[^1]: Ok to be fair, when I say "wide-range", I am refering to the potential of the package. The
-    package currently supports most models in the domain of visual working memory, but we are
-    working on expanding it to other areas as well. But the package is designed to be extensible, so
-    you can easily add your own models.
+- copy paste custom JAGS or Stan code from one project to the next
+- worry about whether you have correctly specified your priors or likelihoods
+- worry about whether you have correctly implemented your model
+- worry about how to adjust the script for your new experimental design and to spend hours debugging
+it. 
+
+The `bmm` package takes care of all of that for you.
+
+![](magical-magic.gif){fig-align="center"}
 
 ## Example - the Interference Measurement Model
 
@@ -81,10 +84,86 @@ example. Let's say you have collected data from a visual working memory task and
 [Interference Measurement Model (IMM)](https://venpopov.github.io/bmm/articles/bmm_imm.html)
 [@oberauer2017] to your data.
 
-(MORE CONTENT HERE...)
+``` {r}
+library(bmm)
 
-(REFER TO TUTORIAL PAPER AND VIGNETTES FOR MORE DETAILS)
+my_data <- bmm::oberauer_lin_2017
+head(my_data)
+```
 
+Using the `bmm` package this requires only three simple steps. First you need to set up the `bmmodel`
+object to specify which variables in your data contain the relevant information to identify the model:
+
+``` {r}
+imm_model <- imm(
+  resp_error = "dev_rad",
+  nt_features = "col_nt",
+  nt_distances = "dist_nt",
+  set_size = "set_size",
+  version = "full",
+  regex = TRUE
+)
+```
+
+The `regex` option allows you to specify the pattern all variables coding the non-target features and
+distances relevant for the IMM without pasting together the names by hand.
+
+Second, we need to specify how the parameters of the model should vary over different conditions. A list of all model parameters and their meaning is saved in the model object and can be accessed using the
+`parameters` element.
+
+```{r}
+imm_model$parameters
+```
+
+Using this information, we can set up the `bmmformula` for the different model parameters. Let's say
+we want to first get an idea how all parameters vary across set_size:
+
+```{r}
+imm_formula <- bmmformula(
+  c ~ 0 + set_size + (0 + set_size | ID),
+  a ~ 0 + set_size + (0 + set_size | ID),
+  s ~ 0 + set_size + (0 + set_size | ID),
+  kappa ~ 0 + set_size + (0 + set_size | ID)
+)
+```
+
+The `bmmformula` object is closely aligned with the `brmsformula` syntax and allows for an easy 
+specification of grouped effects. In this case, we assume random effects for all parameters over the 
+`ID` variable, thus implementing a hierarchical model estimating invidivudal differences in all 
+parameters across the different set sizes.
+
+Finally, we only need to call the `bmm` function to estimate the model. For this, we pass the data,
+the specified `bmmodel` and `bmmformula` to the function. In addition, we can pass  additional 
+options to the function to customize sampling (`warmup`, `iter`, `chains`, `cores`), save the fitted
+model object (`file`), or choose the backend the model should be estimated with.
+
+``` r
+imm_fit <- bmm(
+  # required inputs
+  data = my_data,
+  model = imm_model,
+  formula = imm_formula,
+  
+  # customize sampler settings
+  warmup = 1000,
+  iter = 2000,
+  chains = 4,
+  cores = 4,
+  
+  # save fitted model object
+  file = "imm_fit"
+)
+```
+
+The `bmm` package is closely integrated with `brms`, the leading R package for Bayesian Regression
+Models. This allows you to use almost any postprocessing and inference method implemented for `brms`
+models with the measurement models implemted in `bmm`
+
+You can find more detailed introductions into the different model currently implemented in `bmm` on
+the [package website](https://venpopov.github.io/bmm/articles/index.html). And we have also written
+a [tutorial paper](https://osf.io/preprints/psyarxiv/umt57) that explains more details about the
+implementation of several measurement models, and how to specify `bmmodels` in different experimental
+settings.
 
 ## Currently supported models
 
@@ -94,7 +173,7 @@ We currently have the following models implemented:
 bmm::print_pretty_models_md()
 ```
 
-However, the setup of the bmm package provides the foundation for the implementation of a broad
+However, the setup of the `bmm` package provides the foundation for the implementation of a broad
 range of cognitive measurement models. In fact, we are already working on implementing additional
 models, such as:
 
@@ -107,9 +186,13 @@ on [GitHub](https://github.com/venpopov/bmm/). Ideally this should describe the 
 literature that gives details on the model, and if possible link to code that has already
 implemented the model.
 
-Given the dynamic nature the bmm package is currently in, you can always view the latest list of
+Given the dynamic nature the `bmm` package is currently in, you can always view the latest list of
 supported models by running:
 
 ``` r
 bmm::supported_models()
 ```
+
+So stay tuned for updates and new models! We hope you will find the `bmm` package useful and will
+try fitting one of the already available models to your data. We appreciate all feedback and hope
+that the `bmm` package will make the use of measurement models easier for everybody.
